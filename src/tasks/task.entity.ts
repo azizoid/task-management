@@ -1,24 +1,25 @@
-import { BaseEntity, Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { ObjectId } from "mongodb";
+import { BaseEntity, Column, Entity, ObjectIdColumn, PrimaryGeneratedColumn } from "typeorm";
 import { TaskStatus } from "./tasks-status.enum";
-import { User } from "src/auth/user.entity";
+// import { User } from "src/auth/user.entity";
 
 @Entity()
 export class Task extends BaseEntity {
+  @ObjectIdColumn()
+  _id: ObjectId;
+
   @PrimaryGeneratedColumn()
-  id: number;
+  id: number
 
   @Column()
-  title: string;
-
-  @Column()
-  description: string;
+  content: string;
 
   @Column()
   status: TaskStatus
 
-  @ManyToOne(type => User, user => user.tasks, { eager: false })
-  user: User;
+  @Column()
+  checked: boolean
 
   @Column()
-  userId: number
+  userId: ObjectId
 }

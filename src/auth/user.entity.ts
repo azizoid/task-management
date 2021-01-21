@@ -1,14 +1,23 @@
-import { BaseEntity, Column, Entity, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
+import { Column, Entity, Index, ObjectIdColumn, PrimaryGeneratedColumn } from "typeorm";
 import * as bcrypt from "bcrypt"
-import { Task } from "src/tasks/task.entity";
+import { ObjectId } from "mongodb";
+// import { Task } from "src/tasks/task.entity";
 
 @Entity()
-@Unique(['username'])
-export class User extends BaseEntity {
+export class User {
+
+  constructor(user?: Partial<User>) {
+    Object.assign(this, user);
+  }
+
+  @ObjectIdColumn()
+  _id: ObjectId;
+
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
+  @Index({ unique: true })
   username: string;
 
   @Column()
@@ -17,8 +26,11 @@ export class User extends BaseEntity {
   @Column()
   salt: string
 
-  @OneToMany(type => Task, task => task.user, { eager: true })
-  tasks: Task[]
+  @Column()
+  refreshToken: string
+
+  // @OneToMany(type => Task, task => task.user, { eager: true })
+  // tasks: Task[]
 
   async validatePassword(password: string): Promise<boolean> {
     const hash = await bcrypt.hash(password, this.salt);

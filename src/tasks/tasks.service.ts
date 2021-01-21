@@ -7,6 +7,7 @@ import { CreateTaskDto } from "./dto/create-task.dto"
 import { TaskStatus } from './tasks-status.enum';
 import { GetTasksFilterDto } from './dto/get-tasks-filter.dto';
 import { User } from 'src/auth/user.entity';
+import { ObjectID, ObjectId } from 'mongodb';
 
 @Injectable()
 export class TasksService {
@@ -20,32 +21,41 @@ export class TasksService {
     return this.taskRepository.getTasks(filterDto, user)
   }
 
-  async getTaskById(id: number, user: User): Promise<Task> {
-    const found = await this.taskRepository.findOne({ where: { id, userId: user.id } })
+  async getTaskById(id: string, user: User): Promise<Task> {
+    const conditions = { _id: new ObjectID(id), userId: new ObjectId(user._id) }
+    const task = await this.taskRepository.findOne({ where: conditions })
 
-    if (!found) {
-      throw new NotFoundException()
+    if (!task) {
+      throw new NotFoundException(`Task with id ${id} does not exist`)
     }
 
-    return found
+    return task
   }
 
   async createTask(createTaskDto: CreateTaskDto, user: User): Promise<Task> {
     return this.taskRepository.CreateTask(createTaskDto, user)
   }
 
-  async deleteTask(id: number, user: User): Promise<void> {
-    const result = await this.taskRepository.delete({ id, userId: user.id });
+  async deleteTask(id: string, user: User): Promise<string> {
+    const result = await this.taskRepository.deleteOne(
+      { _id: new ObjectId(id), userId: new ObjectId(user._id) }
+    );
 
-    if (result.affected === 0) {
+    if (result.deletedCount === 0) {
       throw new NotFoundException(`Task with ID "${id}" not found`);
     }
+
+    return id
   }
 
-  async updateTaskStatus(id: number, status: TaskStatus, user: User): Promise<Task> {
+  async updateTaskStatus(id: string, status: TaskStatus, user: User): Promise<Task> {
     const task = await this.getTaskById(id, user);
     task.status = status;
-    await task.save();
+
+    await this.taskRepository.replaceOne(
+      { _id: task._id },
+      task
+    )
     return task;
   }
 }
