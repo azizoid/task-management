@@ -11,39 +11,57 @@ import { TokenCridentialsDto } from './dto/token-cridentials.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { AuthResponse } from "./interfaces/auth.response.interface"
 
+import { MailerService } from '@nestjs-modules/mailer';
+
+
 @Injectable()
 export class AuthService {
 
   constructor(
     @InjectRepository(UserRepository)
     private userRepository: UserRepository,
-    private jwtService: JwtService
+    private jwtService: JwtService,
+    private mailService: MailerService
   ) { }
 
-  async signUp(authCridentialsDto: AuthCridentialsDto): Promise<AuthResponse> {
+  async signUp(authCridentialsDto: AuthCridentialsDto): Promise<string> {
+    const { email, refreshToken } = await this.userRepository.signUp(authCridentialsDto)
 
-    const username = await this.userRepository.signUp(authCridentialsDto)
+    const sendingMail = await this.mailService.sendMail({
+      from: "shaqhuseynov@gmail.com",
+      to: email,
+      subject: "Account activation",
+      // text: `https://teklif.az/v1/auth/activate/${refreshToken}`,
+      // html: `<p><a href="https://teklif.az/v1/auth/activate/${refreshToken}">Please follow the link to activate<a/></p>`,
+      template: "signup",
+      context: {  // Data to be sent to template engine.
+        code: refreshToken,
+        email: email,
+      },
+    }).then(() => `Sign Up was successful. Email sent to ${email} Please follow the link in your email to finish the registration`)
 
-    const generateToken = await this.generateToken(username)
-
-    return { ...generateToken, username };
+    return sendingMail;
   }
 
   async signIn(authCridentialsDto: AuthCridentialsDto): Promise<AuthResponse> {
-    const username = await this.userRepository.validateUserPassword(authCridentialsDto)
+    const email = await this.userRepository.validateUserPassword(authCridentialsDto)
 
-    if (!username) {
+    if (!email) {
       throw new UnauthorizedException('Invalid cridentials')
     }
 
-    const generateToken = await this.generateToken(username)
+    const generateToken = await this.generateToken(email)
 
     return { ...generateToken };
   }
 
-  async generateToken(username: string): Promise<AuthResponse> {
+  async activateUser(code: string): Promise<string> {
+    return await this.userRepository.activateUser(code)
+  }
 
-    const payload: JwtPayload = { username }
+  async generateToken(email: string): Promise<AuthResponse> {
+
+    const payload: JwtPayload = { email }
 
     const accessToken = this.jwtService.sign(
       payload,
@@ -61,9 +79,9 @@ export class AuthService {
       }
     )
 
-    this.userRepository.saveRefreshToken(username, refreshToken)
+    this.userRepository.saveRefreshToken(email, refreshToken)
 
-    return { accessToken, refreshToken, username, expiresIn: 3600 }
+    return { accessToken, refreshToken, email, expiresIn: 3600 }
   }
 
   async verifyToken(tokenCridentialsDto: TokenCridentialsDto): Promise<AuthResponse> {
@@ -84,7 +102,7 @@ export class AuthService {
       throw new BadRequestException('Invalid or Expired cridentials. Please login again')
     }
 
-    const returnedGenerateToken = await this.generateToken(user['username'])
+    const returnedGenerateToken = await this.generateToken(user['email'])
 
     return { ...returnedGenerateToken };
   }

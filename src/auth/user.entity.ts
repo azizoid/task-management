@@ -1,4 +1,4 @@
-import { Column, Entity, Index, ObjectIdColumn, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, Index, ObjectIdColumn } from "typeorm";
 import * as bcrypt from "bcrypt"
 import { ObjectId } from "mongodb";
 // import { Task } from "src/tasks/task.entity";
@@ -13,15 +13,18 @@ export class User {
   @ObjectIdColumn()
   _id: ObjectId;
 
-  @PrimaryGeneratedColumn()
-  id: number;
+  // @PrimaryGeneratedColumn()
+  // id: number;
 
   @Column()
   @Index({ unique: true })
-  username: string;
+  email: string;
 
   @Column()
   password: string
+
+  @Column()
+  status: boolean
 
   @Column()
   salt: string
